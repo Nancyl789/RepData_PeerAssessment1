@@ -1,0 +1,96 @@
+---
+title: "Reproducible Research: Peer Assessment 1"
+output: 
+html_document:
+keep_md: true
+---
+
+
+## Loading and preprocessing the data
+
+
+```{r LoadData,echo=TRUE}
+temp <- tempfile()
+
+download.file("http://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip",temp)
+unzip(temp)
+ACT <- read.csv("activity.csv")
+
+unlink(temp) 
+```
+
+## What is mean total number of steps taken per day?
+```{r Meanstepsday,echo=TRUE}
+ACTmd<-tapply(ACT$step, ACT$date, sum)
+hist(ACTmd,breaks=20, main="Total number of steps per day")
+meansds<-summary(ACTmd)
+meansds
+meansd<-meansds["Mean"]
+meansd
+meansds["Median"]
+```
+
+
+## What is the average daily activity pattern?
+
+```{r AVGdaily, echo=TRUE}
+timei<-tapply(ACT$step,ACT$interval,mean,na.rm=TRUE)
+plot(timei,x=names(timei),type="l",ylab="Avgstepsperinterval", xlab="Interval")
+s<-sort(timei)
+max<-s[length(s)]
+max
+```
+## Imputing missing values
+```{r Totalna, echo=TRUE}
+na<-is.na(ACT)
+sum(na)
+```
+###Here is the strategy to filling NAs,filling NAs with the mean for the 5-minute interval and create a dataset new
+
+```{r FillingNAs, echo=TRUE}
+meani <- aggregate(ACT$step ~ interval, data=ACT, mean)
+names(meani)[2] <- "meanstep"
+com <- merge(ACT, meani)
+com$step[is.na(com$step)] <- com$meanstep[is.na(com$step)]
+com$meanstep <- NULL
+
+```
+
+```{r newdataset, echo=TRUE}
+
+com1<-com[,c(4,3,1)]
+
+newdata<-com1[order(com1$date,com1$interval),]  
+head(newdata)
+```
+###Histogram of total steps each day and mean and median of total steps.
+
+```{r total steps rach day, echo=TRUE}
+tstep<-tapply(newdata$step, newdata$date, sum)
+hist(tstep, breaks=20)
+s<-summary(tstep)
+s["Mean"]
+s["Median"]
+```
+Conclusion:The mean didn't change after filling the NAs with mean value of non-NA dataset; The median increased a little bit.
+
+## Are there differences in activity patterns between weekdays and weekends?
+```{r ActivityPatterncCompare, echo=TRUE}
+newdata$wd<-weekdays(as.Date(newdata$date))
+newdata$wdate=ifelse((newdata$wd=="Sunday"|newdata$wd=="Saturday"), "weekend", "weekday")
+tail(newdata,20)
+
+means<-aggregate(step~interval+wdate,data=newdata,FUN=mean)
+       head(means)
+        tail(means)        
+```
+###Panel plot compare the average steps per 5 minute between weekdays and weekends
+
+```{r PanelPlotCompareAvgStep, echo=TRUE }
+        library(grid)
+        library (lattice)
+p<-xyplot(step~interval|wdate, type="l", data=means, ylab="number of steps",layout=c(1,2) )
+        print(p)
+```
+
+According to the plot, the activity patterns between weekdays and weekend are slightly different in the miidle intervals.
